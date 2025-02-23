@@ -50,7 +50,15 @@ func goTypeToTsType(name string, expr ast.Expr) string {
 		value := goTypeToTsType(name, t.Value)
 		return fmt.Sprintf("{ [key: %s]: %s }", key, value)
 	case *ast.StructType:
-		// TODO: support nested structs
+		// Inline anonymous struct
+		var tsFields []string
+		for _, field := range t.Fields.List {
+			for _, fieldName := range field.Names {
+				tsType := goTypeToTsType(field.Type, exportedStructs)
+				tsFields = append(tsFields, fmt.Sprintf("    %s: %s", fieldName.Name, tsType))
+			}
+		}
+		return fmt.Sprintf("{\n%s\n}", strings.Join(tsFields, ";\n"))
 	default:
 		return "any" // Fallback for unsupported types
 	}
