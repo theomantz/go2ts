@@ -4,7 +4,7 @@ Usage:
   go2ts [flags]
 
 Description:
-  Go2TS scans a directory of Go source files, identifies structs marked with "// @ts-export",
+  Go2TS scans a directory of Go source files, identifies structs marked with the marker argument (default: "// @ts-export"),
   and generates corresponding TypeScript type definitions. It supports nested structs,
   basic Go types, and JSON tags for field naming.
 
@@ -12,13 +12,13 @@ Flags:
   -dir string
         Directory containing Go source files to process (default: ".")
   -out string
-        Output file for TypeScript definitions (default: "types.ts")
+        Output file for TypeScript definitions (default: "go-types.ts")
   -marker string
         Comment marker to identify structs for export (default: "// @ts-export")
   -v    Enable verbose output
 
 Examples:
-  # Convert structs in the current directory, output to types.ts
+  # Convert structs in the current directory, output to go-types.ts
   go2ts
 
   # Convert structs in ./src, output to custom-types.ts

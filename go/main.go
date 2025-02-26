@@ -12,8 +12,9 @@ import (
 )
 
 var (
-	source      = flag.String("source", "./...", "Input go directory")
-	destination = flag.String("destination", "./go-types.ts", "Output file")
+	dir = flag.String("dir", ".", "Input go directory")
+	out = flag.String("out", "./go-types.ts", "Output file")
+	marker = flag.String("marker", "// @ts-export", "Marker used to identify go structs to export")
 )
 
 func main() {
@@ -21,8 +22,9 @@ func main() {
 	flag.Usage = usage
 	flag.Parse()
 	// File or directory to parse
-	inputPath := flag.Arg(0)
-	outputPath := flag.Arg(1)
+	inputDirPath := flag.Arg(0)
+	outputFilePath := flag.Arg(1)
+	marker := flag.Arg(2)
 	fset := token.NewFileSet()
 
 	// Parse the directory
@@ -37,11 +39,53 @@ func main() {
 	}
 }
 
-func processPackage(pkg *ast.Package) {
-	for _, file := range pkg.Files {
-		file := processFile(file)
-		fmt.Print(file)
-	}
+func processPackage(fset *token.FileSet, pkg *ast.Package) string {
+    // Map to store TypeScript definitions
+    tsDefs := make(map[string]string)
+    // Set of exported struct names
+    exportedStructs := make(map[string]bool)
+
+    // First pass: Identify all exported structs
+    for _, file := range pkg.Files {
+        for _, decl := range file.Decls {
+            if genDecl, ok := decl.(*ast.GenDecl); ok && genDecl.Tok == token.TYPE {
+                for _, spec := range genDecl.Specs {
+                    if typeSpec, ok := spec.(*ast.TypeSpec); ok {
+                        if _, ok := typeSpec.Type.(*ast.StructType); ok {
+                            if shouldExport(genDecl.Doc) {
+                                exportedStructs[typeSpec.Name.Name] = true
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    // Second pass: Process structs and generate TS definitions
+    for _, file := range pkg.Files {
+        for _, decl := range file.Decls {
+            if genDecl, ok := decl.(*ast.GenDecl); ok && genDecl.Tok == token.TYPE {
+                for _, spec := range genDecl.Specs {
+                    if typeSpec, ok := spec.(*ast.TypeSpec); ok {
+                        if structType, ok := typeSpec.Type.(*ast.StructType); ok {
+                            if shouldExport(genDecl.Doc) {
+                                tsDefs[typeSpec.Name.Name] = processStruct(typeSpec.Name.Name, structType, exportedStructs)
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    // Combine all definitions into a single string
+    var output strings.Builder
+    for _, def := range tsDefs {
+        output.WriteString(def)
+        output.WriteString("\n")
+    }
+    return output.String()
 }
 
 func usage() {
