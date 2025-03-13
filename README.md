@@ -50,5 +50,3 @@ Notes:
   - Unexported nested structs are mapped to "any" by default.
   - Supported Go types: int, string, bool, arrays, slices, maps, etc.
   - JSON tags override field names in the output.
-
-For more information, see: https://github.com/theomantz/go2ts
