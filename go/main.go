@@ -11,34 +11,36 @@ import (
 	"strings"
 )
 
-var (
-	dir    = flag.String("dir", ".", "Input go directory")
-	out    = flag.String("out", "./go-types.ts", "Output file")
-	marker = flag.String("marker", "// @ts-export", "Marker used to identify go structs to export")
-)
-
 func main() {
 	flag.Usage = usage
 	flag.Parse()
 	// File or directory to parse
-	inputDirPath := flag.Arg(0)
-	outputFilePath := flag.Arg(1)
-	marker := flag.Arg(2)
+	inputDirPath := flag.String("dir", ".", "directory containing Go source files")
+	outputFilePath := flag.String("out", "types.ts", "output file for TypeScript definitions")
+	marker := flag.String("marker", "// @ ts-export", "marker used to identify Go structs for export to TypeScript")
 	fset := token.NewFileSet()
 
 	// Parse the directory
-	packages, err := parser.ParseDir(fset, inputPath, nil, parser.ParseComments)
+	packages, err := parser.ParseDir(fset, *inputDirPath, nil, parser.ParseComments)
 	if err != nil {
 		log.Fatal(err)
 	}
 
 	// Process each package
+	var tsOutput string
 	for _, pkg := range packages {
-		processPackage(pkg)
+		tsOutput += processPackage(fset, pkg, *marker)
 	}
+
+	err = os.WriteFile(*outputFilePath, []byte(tsOutput), 0644)
+	if err != nil {
+		log.Fatalf("failed to write to %s: %v", *outputFilePath, err)
+	}
+
+	log.Printf("definitions successfully written to %s", *outputFilePath)
 }
 
-func processPackage(fset *token.FileSet, pkg *ast.Package) string {
+func processPackage(fset *token.FileSet, pkg *ast.Package, marker string) string {
 	// Map to store TypeScript definitions
 	tsDefs := make(map[string]string)
 	// Set of exported struct names
@@ -51,8 +53,9 @@ func processPackage(fset *token.FileSet, pkg *ast.Package) string {
 				for _, spec := range genDecl.Specs {
 					if typeSpec, ok := spec.(*ast.TypeSpec); ok {
 						if _, ok := typeSpec.Type.(*ast.StructType); ok {
-							if shouldExport(genDecl.Doc) {
+							if shouldExport(genDecl.Doc, marker) {
 								exportedStructs[typeSpec.Name.Name] = true
+								log.Printf("loop exportedStructs: %v", exportedStructs)
 							}
 						}
 					}
@@ -68,7 +71,8 @@ func processPackage(fset *token.FileSet, pkg *ast.Package) string {
 				for _, spec := range genDecl.Specs {
 					if typeSpec, ok := spec.(*ast.TypeSpec); ok {
 						if structType, ok := typeSpec.Type.(*ast.StructType); ok {
-							if shouldExport(genDecl.Doc) {
+							if shouldExport(genDecl.Doc, marker) {
+								log.Printf("exported exportedStructs: %v", exportedStructs)
 								tsDefs[typeSpec.Name.Name] = processStruct(typeSpec.Name.Name, structType, exportedStructs)
 							}
 						}

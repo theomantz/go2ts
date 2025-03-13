@@ -24,7 +24,7 @@ func TestProcessPackage(t *testing.T) {
                     Name string ` + "`json:\"name\"`" + `
                 }
             `,
-			expected: `type Simple = {
+			expected: `export type Simple = {
     id: number;
     name: string;
 };
@@ -35,19 +35,19 @@ func TestProcessPackage(t *testing.T) {
 			input: `
                 package test
                 // @ts-export
+                type Child struct {
+                    Value string` + "`json:\"value\"`" + `
+                }
+                // @ts-export
                 type Parent struct {
                     Child Child ` + "`json:\"child\"`" + `
                 }
-                // @ts-export
-                type Child struct {
-                    Value string ` + "`json:\"value\"`" + `
-                }
             `,
-			expected: `type Child = {
+			expected: `export type Child = {
     value: string;
 };
 
-type Parent = {
+export type Parent = {
     child: Child;
 };
 `,
@@ -64,7 +64,7 @@ type Parent = {
                     Value string ` + "`json:\"value\"`" + `
                 }
             `,
-			expected: `type Parent = {
+			expected: `export type Parent = {
     child: any;
 };
 `,
@@ -80,7 +80,7 @@ type Parent = {
                     Ptr *string ` + "`json:\"ptr\"`" + `
                 }
             `,
-			expected: `type Complex = {
+			expected: `export type Complex = {
     numbers: number[];
     mapping: { [key: string]: boolean };
     ptr: any;
@@ -94,7 +94,7 @@ type Parent = {
                 // @ts-export
                 type Empty struct {}
             `,
-			expected: `type Empty = {
+			expected: `export type Empty = {
 };
 `,
 		},
@@ -116,7 +116,7 @@ type Parent = {
 			}
 
 			// Run the processing
-			got := processPackage(fset, pkg)
+			got := processPackage(fset, pkg, "// @ ts-export")
 
 			// Normalize whitespace for comparison
 			got = normalizeTS(got)

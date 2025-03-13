@@ -19,7 +19,12 @@ func processStruct(name string, structType *ast.StructType, exportedStructs map[
 			tsFields = append(tsFields, fmt.Sprintf("    %s: %s", tsFieldName, tsType))
 		}
 	}
-	return fmt.Sprintf("export type %s = {\n%s\n};\n", name, strings.Join(tsFields, ";\n"))
+
+	var outputString string
+	if len(tsFields) > 0 {
+		outputString += strings.Join(tsFields, ";\n") + ";"
+	}
+	return fmt.Sprintf("export type %s = {\n%s\n};\n", name, outputString)
 }
 
 func getJSONTag(tag *ast.BasicLit) string {
@@ -39,6 +44,9 @@ func getJSONTag(tag *ast.BasicLit) string {
 func goTypeToTsType(expr ast.Expr, exportedStructs map[string]bool) string {
 	switch t := expr.(type) {
 	case *ast.Ident:
+		if exportedStructs[t.Name] {
+			return t.Name
+		}
 		return GetIdentMapping(t.Name)
 	case *ast.ArrayType:
 		return goTypeToTsType(t.Elt, exportedStructs) + "[]"
@@ -55,7 +63,7 @@ func goTypeToTsType(expr ast.Expr, exportedStructs map[string]bool) string {
 				tsFields = append(tsFields, fmt.Sprintf("    %s: %s", fieldName.Name, tsType))
 			}
 		}
-		return fmt.Sprintf("{\n%s\n}", strings.Join(tsFields, ";\n"))
+		return fmt.Sprintf("{\n%s\n}", strings.Join(tsFields, "\n"))
 	default:
 		return "any" // Fallback for unsupported types
 	}
